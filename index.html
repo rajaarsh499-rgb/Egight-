@@ -1,0 +1,1936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Egight · Voice Assistant</title>
+
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+
+    <style>
+        /* ----- Reset & Base ----- */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg-primary: #0b0e1a;
+            --bg-secondary: #131825;
+            --bg-card: #1a2135;
+            --bg-input: #222b44;
+            --text-primary: #f0f4ff;
+            --text-secondary: #a8b5d9;
+            --accent: #6c8cff;
+            --accent-glow: rgba(108, 140, 255, 0.35);
+            --accent-dim: rgba(108, 140, 255, 0.12);
+            --shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
+            --radius: 24px;
+            --radius-sm: 14px;
+            --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        html,
+        body {
+            height: 100%;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            overflow: hidden;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* ----- Scrollbar ----- */
+        ::-webkit-scrollbar {
+            width: 3px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--accent);
+            border-radius: 12px;
+        }
+
+        /* ----- App Shell ----- */
+        #app {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            height: 100dvh;
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 20px 16px 28px;
+            background: var(--bg-primary);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* subtle background glow */
+        #app::before {
+            content: '';
+            position: absolute;
+            top: -30%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 320px;
+            height: 320px;
+            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+            opacity: 0.25;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ----- Header ----- */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4px 0 14px;
+            z-index: 1;
+            flex-shrink: 0;
+            gap: 8px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+
+        .brand-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--accent);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: #fff;
+            box-shadow: 0 4px 16px var(--accent-glow);
+        }
+
+        .brand h1 {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+            background: linear-gradient(135deg, #fff 60%, var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .brand span {
+            font-weight: 400;
+            font-size: 13px;
+            color: var(--text-secondary);
+            -webkit-text-fill-color: var(--text-secondary);
+            background: none;
+            margin-left: 2px;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+
+        .status-badge {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 6px 14px;
+            border-radius: 40px;
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+            transition: var(--transition);
+        }
+
+        .status-badge .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-secondary);
+            transition: var(--transition);
+        }
+
+        .status-badge.active .dot {
+            background: #4cdf8b;
+            box-shadow: 0 0 12px rgba(76, 223, 139, 0.5);
+            animation: pulse-dot 1.4s ease-in-out infinite;
+        }
+
+        .status-badge.listening .dot {
+            background: #ffb347;
+            box-shadow: 0 0 16px rgba(255, 179, 71, 0.6);
+            animation: pulse-dot 0.8s ease-in-out infinite;
+        }
+
+        .status-badge.speaking .dot {
+            background: #6c8cff;
+            box-shadow: 0 0 16px var(--accent-glow);
+            animation: pulse-dot 0.9s ease-in-out infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%,
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.5);
+                opacity: 0.6;
+            }
+        }
+
+        /* Continuous Mode Toggle */
+        .toggle-continuous {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 17px;
+            padding: 6px;
+            border-radius: 40px;
+            cursor: pointer;
+            transition: var(--transition);
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid transparent;
+            touch-action: manipulation;
+        }
+
+        .toggle-continuous.active {
+            color: var(--accent);
+            border-color: var(--accent);
+            background: var(--accent-dim);
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        .toggle-continuous:active {
+            transform: scale(0.9);
+        }
+
+        /* ----- Conversation Area ----- */
+        .conversation {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 2px 12px;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .conversation.empty {
+            justify-content: center;
+            align-items: center;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 20px 16px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state .icon-big {
+            font-size: 56px;
+            color: var(--accent);
+            opacity: 0.35;
+            margin-bottom: 16px;
+            display: block;
+        }
+
+        .empty-state h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+
+        .empty-state p {
+            font-size: 14px;
+            opacity: 0.7;
+            line-height: 1.5;
+            max-width: 260px;
+            margin: 0 auto;
+        }
+
+        /* ----- Message Bubbles ----- */
+        .message {
+            display: flex;
+            gap: 12px;
+            max-width: 92%;
+            animation: fade-up 0.35s ease forwards;
+            opacity: 0;
+            transform: translateY(12px);
+        }
+
+        .message.user {
+            align-self: flex-end;
+            flex-direction: row-reverse;
+        }
+
+        .message.assistant {
+            align-self: flex-start;
+        }
+
+        @keyframes fade-up {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message .avatar {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+            color: #fff;
+            margin-top: 2px;
+        }
+
+        .message.user .avatar {
+            background: var(--accent);
+            box-shadow: 0 2px 12px var(--accent-glow);
+        }
+
+        .message.assistant .avatar {
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            color: var(--accent);
+        }
+
+        .message .bubble {
+            background: var(--bg-card);
+            padding: 14px 18px;
+            border-radius: var(--radius-sm);
+            line-height: 1.55;
+            font-size: 15px;
+            word-break: break-word;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            min-width: 48px;
+        }
+
+        .message.user .bubble {
+            background: var(--accent);
+            color: #fff;
+            border-color: var(--accent);
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.assistant .bubble {
+            border-bottom-left-radius: 4px;
+            color: var(--text-primary);
+        }
+
+        .message .bubble .time {
+            display: block;
+            font-size: 10px;
+            opacity: 0.4;
+            margin-top: 8px;
+            letter-spacing: 0.3px;
+            font-weight: 500;
+        }
+
+        .message.user .bubble .time {
+            opacity: 0.7;
+        }
+
+        /* typing indicator */
+        .typing-indicator {
+            display: flex;
+            gap: 5px;
+            padding: 12px 18px;
+            background: var(--bg-card);
+            border-radius: var(--radius-sm);
+            border-bottom-left-radius: 4px;
+            width: fit-content;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-secondary);
+            opacity: 0.3;
+            animation: typing-bounce 1.4s ease-in-out infinite;
+        }
+
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing-bounce {
+            0%,
+            60%,
+            100% {
+                transform: translateY(0);
+                opacity: 0.3;
+            }
+            30% {
+                transform: translateY(-8px);
+                opacity: 0.9;
+            }
+        }
+
+        /* ----- Input Area ----- */
+        .input-area {
+            z-index: 2;
+            flex-shrink: 0;
+            padding-top: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--bg-primary);
+            position: relative;
+        }
+
+        .input-area::before {
+            content: '';
+            position: absolute;
+            top: -8px;
+            left: -16px;
+            right: -16px;
+            height: 24px;
+            background: linear-gradient(to bottom, transparent, var(--bg-primary));
+            pointer-events: none;
+        }
+
+        .mic-btn {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            border: none;
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            font-size: 26px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+            touch-action: manipulation;
+        }
+
+        .mic-btn:active {
+            transform: scale(0.92);
+        }
+
+        .mic-btn.active {
+            background: var(--accent);
+            color: #fff;
+            box-shadow: 0 4px 32px var(--accent-glow);
+            border-color: var(--accent);
+        }
+
+        .mic-btn.listening {
+            background: #ffb347;
+            color: #fff;
+            box-shadow: 0 4px 32px rgba(255, 179, 71, 0.4);
+            border-color: #ffb347;
+            animation: mic-pulse 1s ease-in-out infinite;
+        }
+
+        @keyframes mic-pulse {
+            0%,
+            100% {
+                box-shadow: 0 4px 32px rgba(255, 179, 71, 0.3);
+            }
+            50% {
+                box-shadow: 0 4px 56px rgba(255, 179, 71, 0.6);
+            }
+        }
+
+        .mic-btn.speaking {
+            background: #6c8cff;
+            color: #fff;
+            box-shadow: 0 4px 32px var(--accent-glow);
+            border-color: #6c8cff;
+        }
+
+        .input-wrapper {
+            flex: 1;
+            background: var(--bg-card);
+            border-radius: 40px;
+            padding: 4px 4px 4px 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            transition: var(--transition);
+            min-width: 0;
+        }
+
+        .input-wrapper:focus-within {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-dim);
+        }
+
+        .input-wrapper input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: var(--text-primary);
+            font-size: 15px;
+            padding: 14px 0;
+            min-width: 0;
+            font-family: inherit;
+        }
+
+        .input-wrapper input::placeholder {
+            color: var(--text-secondary);
+            opacity: 0.6;
+        }
+
+        .input-wrapper .send-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: none;
+            background: var(--accent);
+            color: #fff;
+            font-size: 18px;
+            cursor: pointer;
+            transition: var(--transition);
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: manipulation;
+        }
+
+        .input-wrapper .send-btn:active {
+            transform: scale(0.88);
+        }
+
+        .input-wrapper .send-btn:disabled {
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
+        /* ----- Utilities ----- */
+        .hidden {
+            display: none !important;
+        }
+
+        /* ----- Toast / Snackbar ----- */
+        .toast {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: var(--bg-card);
+            color: var(--text-primary);
+            padding: 12px 24px;
+            border-radius: 40px;
+            font-size: 14px;
+            font-weight: 500;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+            opacity: 0;
+            transition: all 0.4s ease;
+            pointer-events: none;
+            z-index: 99;
+            max-width: 90%;
+            text-align: center;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        .toast.visible {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* ----- Responsive tweaks ----- */
+        @media (max-width: 400px) {
+            #app {
+                padding: 14px 12px 20px;
+            }
+            .brand h1 {
+                font-size: 17px;
+            }
+            .brand span {
+                font-size: 11px;
+            }
+            .mic-btn {
+                width: 56px;
+                height: 56px;
+                font-size: 22px;
+            }
+            .message .bubble {
+                font-size: 14px;
+                padding: 12px 14px;
+            }
+            .input-wrapper input {
+                font-size: 14px;
+                padding: 12px 0;
+            }
+            .input-wrapper .send-btn {
+                width: 38px;
+                height: 38px;
+                font-size: 15px;
+            }
+            .status-badge {
+                font-size: 10px;
+                padding: 4px 10px;
+            }
+            .toggle-continuous {
+                font-size: 15px;
+                width: 32px;
+                height: 32px;
+            }
+        }
+
+        @media (max-width: 360px) {
+            .brand-icon {
+                width: 34px;
+                height: 34px;
+                font-size: 16px;
+            }
+            .brand h1 {
+                font-size: 15px;
+            }
+            .empty-state .icon-big {
+                font-size: 42px;
+            }
+        }
+
+        /* Safe area for notched phones */
+        @supports (padding: max(0px)) {
+            #app {
+                padding-left: max(16px, env(safe-area-inset-left));
+                padding-right: max(16px, env(safe-area-inset-right));
+                padding-bottom: max(28px, env(safe-area-inset-bottom));
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="brand">
+                <div class="brand-icon"><i class="fas fa-microchip"></i></div>
+                <h1>Egight <span>· alpha</span></h1>
+            </div>
+            <div class="header-actions">
+                <button class="toggle-continuous" id="continuousToggle" aria-label="Toggle continuous mode" title="Continuous Mode (auto-listen)">
+                    <i class="fas fa-arrows-rotate" id="continuousIcon"></i>
+                </button>
+                <div class="status-badge" id="statusBadge">
+                    <span class="dot"></span>
+                    <span id="statusLabel">Ready</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Conversation -->
+        <div class="conversation empty" id="conversation">
+            <div class="empty-state" id="emptyState">
+                <span class="icon-big"><i class="fas fa-comment-dots"></i></span>
+                <h3>How can I help?</h3>
+                <p>Tap the microphone and start speaking — or type your question below.</p>
+            </div>
+        </div>
+
+        <!-- Input -->
+        <div class="input-area">
+            <button class="mic-btn" id="micBtn" aria-label="Voice input">
+                <i class="fas fa-microphone" id="micIcon"></i>
+            </button>
+
+            <div class="input-wrapper">
+                <input type="text" id="textInput" placeholder="Ask me anything…" autocomplete="off" />
+                <button class="send-btn" id="sendBtn" aria-label="Send">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        (function() {
+            'use strict';
+
+            // ----- DOM refs -----
+            const conversation = document.getElementById('conversation');
+            const emptyState = document.getElementById('emptyState');
+            const micBtn = document.getElementById('micBtn');
+            const micIcon = document.getElementById('micIcon');
+            const textInput = document.getElementById('textInput');
+            const sendBtn = document.getElementById('sendBtn');
+            const statusBadge = document.getElementById('statusBadge');
+            const statusLabel = document.getElementById('statusLabel');
+            const toastEl = document.getElementById('toast');
+            const continuousToggle = document.getElementById('continuousToggle');
+            const continuousIcon = document.getElementById('continuousIcon');
+
+            // ----- State -----
+            let isListening = false;
+            let isSpeaking = false;
+            let isProcessing = false;
+            let continuousMode = false; // FUTURE-ENABLED: hands-free continuous listening
+            let recognition = null;
+            let synth = window.speechSynthesis;
+            let utterance = null;
+            let conversationHistory = [];
+
+            // ----- Helpers -----
+            function setStatus(text, type) {
+                statusLabel.textContent = text;
+                statusBadge.className = 'status-badge';
+                if (type === 'active') statusBadge.classList.add('active');
+                else if (type === 'listening') statusBadge.classList.add('listening');
+                else if (type === 'speaking') statusBadge.classList.add('speaking');
+            }
+
+            function showToast(msg, duration = 2400) {
+                toastEl.textContent = msg;
+                toastEl.classList.add('visible');
+                clearTimeout(toastEl._hide);
+                toastEl._hide = setTimeout(() => toastEl.classList.remove('visible'), duration);
+            }
+
+            function formatTime() {
+                return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
+
+            function scrollToBottom() {
+                requestAnimationFrame(() => {
+                    conversation.scrollTop = conversation.scrollHeight;
+                });
+            }
+
+            // ----- Add message -----
+            function addMessage(role, content) {
+                if (emptyState && !emptyState.classList.contains('hidden')) {
+                    emptyState.classList.add('hidden');
+                    conversation.classList.remove('empty');
+                }
+
+                const msgDiv = document.createElement('div');
+                msgDiv.className = `message ${role}`;
+
+                const avatar = document.createElement('div');
+                avatar.className = 'avatar';
+                avatar.innerHTML = role === 'user' ?
+                    '<i class="fas fa-user"></i>' :
+                    '<i class="fas fa-robot"></i>';
+
+                const bubble = document.createElement('div');
+                bubble.className = 'bubble';
+                bubble.innerHTML = `<span>${content}</span><span class="time">${formatTime()}</span>`;
+
+                msgDiv.appendChild(avatar);
+                msgDiv.appendChild(bubble);
+                conversation.appendChild(msgDiv);
+
+                conversationHistory.push({ role, content });
+                scrollToBottom();
+                return msgDiv;
+            }
+
+            // ----- Remove typing indicator -----
+            let typingEl = null;
+
+            function showTyping() {
+                removeTyping();
+                typingEl = document.createElement('div');
+                typingEl.className = 'message assistant';
+                const avatar = document.createElement('div');
+                avatar.className = 'avatar';
+                avatar.innerHTML = '<i class="fas fa-robot"></i>';
+                const bubble = document.createElement('div');
+                bubble.className = 'bubble typing-indicator';
+                bubble.innerHTML = '<span></span><span></span><span></span>';
+                typingEl.appendChild(avatar);
+                typingEl.appendChild(bubble);
+                conversation.appendChild(typingEl);
+                scrollToBottom();
+            }
+
+            function removeTyping() {
+                if (typingEl && typingEl.parentNode) {
+                    typingEl.remove();
+                    typingEl = null;
+                }
+            }
+
+            // ----- Speak -----
+            function speak(text, callback) {
+                if (!synth) {
+                    if (callback) callback();
+                    return;
+                }
+
+                if (synth.speaking) {
+                    synth.cancel();
+                }
+
+                utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'en-US';
+                utterance.rate = 0.95;
+                utterance.pitch = 1.05;
+                utterance.volume = 1;
+
+                isSpeaking = true;
+                setStatus('Speaking…', 'speaking');
+                micBtn.classList.add('speaking');
+                micIcon.className = 'fas fa-volume-up';
+
+                utterance.onend = function() {
+                    isSpeaking = false;
+                    setStatus('Ready', '');
+                    micBtn.classList.remove('speaking');
+                    micIcon.className = 'fas fa-microphone';
+                    if (callback) callback();
+
+                    // FUTURE-ENABLED: Auto-restart listening if continuous mode is ON
+                    if (continuousMode && !isListening && !isProcessing) {
+                        setTimeout(() => {
+                            if (continuousMode && !isListening && !isProcessing) {
+                                startListening();
+                            }
+                        }, 450);
+                    }
+                };
+
+                utterance.onerror = function(e) {
+                    if (e.error !== 'canceled') {
+                        console.warn('Speech error:', e);
+                    }
+                    isSpeaking = false;
+                    setStatus('Ready', '');
+                    micBtn.classList.remove('speaking');
+                    micIcon.className = 'fas fa-microphone';
+                    if (callback) callback();
+                };
+
+                synth.speak(utterance);
+            }
+
+            // ----- Process user input -----
+            function processInput(text) {
+                if (!text || text.trim().length === 0) return;
+                const trimmed = text.trim();
+                if (isProcessing) return;
+                isProcessing = true;
+
+                addMessage('user', trimmed);
+                textInput.value = '';
+                showTyping();
+
+                const response = generateResponse(trimmed);
+
+                setTimeout(() => {
+                    removeTyping();
+                    addMessage('assistant', response);
+
+                    speak(response, () => {
+                        isProcessing = false;
+                    });
+                }, 400 + Math.min(600, trimmed.length * 6));
+            }
+
+            // ----- Response generator (smart & contextual) -----
+            function generateResponse(input) {
+                const lower = input.toLowerCase();
+
+                if (lower.match(/^(hi|hello|hey|howdy|greetings|sup|yo|what's up|hey there)/i)) {
+                    const greets = [
+                        "Hey there! How can I brighten your day?",
+                        "Hello! Ready to assist you.",
+                        "Hi! What can I do for you today?",
+                        "Greetings! I'm all ears — or rather, all microphones."
+                    ];
+                    return greets[Math.floor(Math.random() * greets.length)];
+                }
+
+                if (lower.match(/(time|clock|what time|current time)/i)) {
+                    const now = new Date();
+                    const h = now.getHours();
+                    const m = now.getMinutes().toString().padStart(2, '0');
+                    const ampm = h >= 12 ? 'PM' : 'AM';
+                    const hr12 = h % 12 || 12;
+                    return `It's ${hr12}:${m} ${ampm}.`;
+                }
+
+                if (lower.match(/(date|today|what day|current date)/i)) {
+                    const now = new Date();
+                    const opts = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                    return `Today is ${now.toLocaleDateString('en-US', opts)}.`;
+                }
+
+                if (lower.match(/(weather|temperature|forecast|rain|sunny|cloudy)/i)) {
+                    const conditions = ['sunny', 'partly cloudy', 'mostly clear', 'light breeze', 'fair'];
+                    const cond = conditions[Math.floor(Math.random() * conditions.length)];
+                    const temp = Math.round(18 + Math.random() * 12);
+                    return `The weather is currently ${cond} with a temperature of ${temp}°C. I'd recommend ${temp > 24 ? 'light clothing' : 'a light jacket'}.`;
+                }
+
+                if (lower.match(/(who are you|what are you|your name|introduce yourself)/i)) {
+                    return "I'm Egight, your friendly voice assistant. I'm here to help with questions, reminders, or just casual chat. Built with a little bit of code and a whole lot of curiosity.";
+                }
+
+                if (lower.match(/(what can you do|help|capabilities|features)/i)) {
+                    return "I can tell you the time and date, give weather reports, answer general questions, set reminders, and have a friendly chat. Just ask away!";
+                }
+
+                if (lower.match(/(remind|reminder|remember|set a reminder)/i)) {
+                    const match = lower.match(/remind me to (.+?)(\.|$| in | at )/i);
+                    if (match) {
+                        const task = match[1].trim();
+                        return `Okay, I'll remind you to ${task}. I'll keep that in mind! (I'm pretty good at remembering... for now.)`;
+                    }
+                    return "Sure! What would you like me to remind you about? Just say 'remind me to [task]'.";
+                }
+
+                if (lower.match(/(joke|funny|laugh|humor|make me laugh)/i)) {
+                    const jokes = [
+                        "Why do programmers prefer dark mode? Because light attracts bugs!",
+                        "What do you call a fake noodle? An impasta.",
+                        "Why did the scarecrow win an award? Because he was outstanding in his field.",
+                        "How do you organize a space party? You planet!",
+                        "What's a computer's favorite snack? Microchips."
+                    ];
+                    return jokes[Math.floor(Math.random() * jokes.length)];
+                }
+
+                if (lower.match(/(bye|goodbye|see you|farewell|cya|gotta go)/i)) {
+                    const farewells = [
+                        "Goodbye! It was a pleasure chatting with you.",
+                        "See you later! Take care.",
+                        "Farewell! Come back anytime.",
+                        "Catch you later! Stay awesome."
+                    ];
+                    return farewells[Math.floor(Math.random() * farewells.length)];
+                }
+
+                if (lower.match(/(thank|thanks|appreciate|ty|thx)/i)) {
+                    const thanks = [
+                        "You're very welcome!",
+                        "My pleasure! Happy to help.",
+                        "Anytime! That's what I'm here for.",
+                        "Glad I could assist!"
+                    ];
+                    return thanks[Math.floor(Math.random() * thanks.length)];
+                }
+
+                if (lower.match(/(how are you|how do you do|how's it going|how's life)/i)) {
+                    const moods = [
+                        "I'm doing great, thanks for asking! How about you?",
+                        "All systems operational and ready to chat!",
+                        "I'm feeling quite digital today — which is to say, fantastic!",
+                        "Couldn't be better! Just enjoying the conversation."
+                    ];
+                    return moods[Math.floor(Math.random() * moods.length)];
+                }
+
+                const fallbacks = [
+                    `That's interesting. Tell me more about "${input}" — I'm curious!`,
+                    `Hmm, I don't have a specific answer for that, but I'm all ears.`,
+                    `I'm not quite sure about that one. Could you rephrase it?`,
+                    `That's a good question. I'll remember it for next time!`,
+                    `I'm still learning! What else would you like to ask?`
+                ];
+                return fallbacks[Math.floor(Math.random() * fallbacks.length)];
+            }
+
+            // ----- Speech Recognition -----
+            function initRecognition() {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                if (!SpeechRecognition) {
+                    showToast('Voice recognition not supported in this browser.', 3000);
+                    micBtn.style.opacity = '0.4';
+                    micBtn.style.pointerEvents = 'none';
+                    return null;
+                }
+
+                const rec = new SpeechRecognition();
+                rec.lang = 'en-US';
+                rec.continuous = false;
+                rec.interimResults = false;
+                rec.maxAlternatives = 1;
+
+                rec.onstart = function() {
+                    isListening = true;
+                    setStatus('Listening…', 'listening');
+                    micBtn.classList.add('listening');
+                    micIcon.className = 'fas fa-circle';
+                    showToast('Listening… speak now', 1400);
+                };
+
+                rec.onresult = function(event) {
+                    const transcript = event.results[0][0].transcript.trim();
+                    if (transcript.length > 0) {
+                        stopListening();
+                        processInput(transcript);
+                    } else {
+                        stopListening();
+                        showToast('I didn\'t catch that. Try again.', 2000);
+                    }
+                };
+
+                rec.onerror = function(event) {
+                    console.warn('Recognition error:', event.error);
+                    stopListening();
+                    if (event.error === 'not-allowed') {
+                        showToast('Microphone access denied. Please allow and try again.', 3000);
+                    } else if (event.error === 'no-speech') {
+                        showToast('No speech detected. Tap and speak again.', 2000);
+                    } else {
+                        showToast(`Voice error: ${event.error}`, 2000);
+                    }
+                };
+
+                rec.onend = function() {
+                    stopListening();
+                };
+
+                return rec;
+            }
+
+            function startListening() {
+                if (isSpeaking) {
+                    synth.cancel();
+                    isSpeaking = false;
+                    setStatus('Ready', '');
+                    micBtn.classList.remove('speaking');
+                    micIcon.className = 'fas fa-microphone';
+                }
+
+                if (isListening) return;
+
+                if (!recognition) {
+                    recognition = initRecognition();
+                    if (!recognition) return;
+                }
+
+                try {
+                    recognition.start();
+                } catch (e) {
+                    try {
+                        recognition.stop();
+                        setTimeout(() => recognition.start(), 200);
+                    } catch (err) {
+                        showToast('Could not start microphone.', 2000);
+                    }
+                }
+            }
+
+            function stopListening() {
+                if (recognition) {
+                    try {
+                        recognition.stop();
+                    } catch (e) { /* ignore */ }
+                }
+                isListening = false;
+                setStatus('Ready', '');
+                micBtn.classList.remove('listening');
+                micIcon.className = 'fas fa-microphone';
+            }
+
+            // ----- Toggle mic -----
+            function toggleMic() {
+                if (isListening) {
+                    stopListening();
+                    showToast('Stopped listening', 1200);
+                } else {
+                    startListening();
+                }
+            }
+
+            // ----- Continuous Mode Toggle -----
+            function toggleContinuous() {
+                continuousMode = !continuousMode;
+                continuousToggle.classList.toggle('active', continuousMode);
+                continuousIcon.className = continuousMode ? 'fas fa-arrows-rotate fa-spin' : 'fas fa-arrows-rotate';
+                showToast(continuousMode ? '♾️ Continuous mode ON — I\'ll keep listening' : 'Continuous mode OFF', 2000);
+
+                // If continuous mode is turned ON and we are idle, start listening automatically
+                if (continuousMode && !isListening && !isSpeaking && !isProcessing) {
+                    setTimeout(startListening, 300);
+                }
+                // If turned OFF, stop listening if it's idle (but don't interrupt speech)
+                if (!continuousMode && isListening && !isSpeaking) {
+                    stopListening();
+                }
+            }
+
+            // ----- Event listeners -----
+            micBtn.addEventListener('click', toggleMic);
+            continuousToggle.addEventListener('click', toggleContinuous);
+
+            function handleSend() {
+                const val = textInput.value.trim();
+                if (val && !isProcessing) {
+                    processInput(val);
+                } else if (!val) {
+                    showToast('Type something first.', 1200);
+                } else if (isProcessing) {
+                    showToast('I\'m still thinking…', 1200);
+                }
+            }
+
+            sendBtn.addEventListener('click', handleSend);
+            textInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleSend();
+                }
+            });
+
+            textInput.addEventListener('focus', () => {
+                if (isListening) stopListening();
+            });
+
+            micBtn.addEventListener('touchstart', () => {
+                if (navigator.vibrate) navigator.vibrate(10);
+            });
+
+            // ----- Handle visibility change (stop everything on tab hide) -----
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    if (synth && synth.speaking) {
+                        synth.cancel();
+                        isSpeaking = false;
+                        setStatus('Ready', '');
+                        micBtn.classList.remove('speaking');
+                        micIcon.className = 'fas fa-microphone';
+                    }
+                    if (isListening) stopListening();
+                }
+            });
+
+            // ----- Init -----
+            setStatus('Ready', '');
+            if (synth) {
+                if (synth.getVoices().length === 0) {
+                    synth.onvoiceschanged = () => { /* voices ready */ };
+                }
+            }
+
+            // ---- keyboard shortcut: press "/" to focus input ----
+            document.addEventListener('keydown', (e) => {
+                if (e.key === '/' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                    const tag = document.activeElement?.tagName;
+                    if (tag !== 'INPUT' && tag !== 'TEXTAREA') {
+                        e.preventDefault();
+                        textInput.focus();
+                    }
+                }
+                if (e.key === 'Escape' && document.activeElement === textInput) {
+                    textInput.blur();
+                }
+            });
+
+            // ---- Expose for debugging ----
+            window.__egight = {
+                processInput,
+                generateResponse,
+                speak,
+                startListening,
+                stopListening,
+                toggleMic,
+                toggleContinuous,
+                addMessage,
+                clearHistory: () => {
+                    conversation.innerHTML = '';
+                    conversationHistory = [];
+                    const empty = document.createElement('div');
+                    empty.className = 'empty-state';
+                    empty.id = 'emptyState';
+                    empty.innerHTML = `
+                            <span class="icon-big"><i class="fas fa-comment-dots"></i></span>
+                            <h3>How can I help?</h3>
+                            <p>Tap the microphone and start speaking — or type your question below.</p>
+                        `;
+                    conversation.appendChild(empty);
+                    conversation.classList.add('empty');
+                    showToast('Cleared conversation', 1200);
+                },
+                continuousMode: () => continuousMode
+            };
+
+            console.log('🚀 Egight voice assistant ready with CONTINUOUS MODE.');
+            console.log('🔁 Toggle continuous mode with the rotate icon in the header.');
+            console.log('💡 Available: window.__egight for debugging.');
+
+            if (window.SpeechRecognition || window.webkitSpeechRecognition) {
+                setTimeout(() => {
+                    if (conversationHistory.length === 0) {
+                        setTimeout(() => {
+                            showToast('Tap the mic 🎤 or enable continuous mode ♾️', 2800);
+                        }, 800);
+                    }
+                }, 600);
+            }
+
+        })();
+    </script>
+
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Egight · Voice Assistant</title>
+
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+
+    <style>
+        /* ----- Reset & Base ----- */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg-primary: #0b0e1a;
+            --bg-secondary: #131825;
+            --bg-card: #1a2135;
+            --bg-input: #222b44;
+            --text-primary: #f0f4ff;
+            --text-secondary: #a8b5d9;
+            --accent: #6c8cff;
+            --accent-glow: rgba(108, 140, 255, 0.35);
+            --accent-dim: rgba(108, 140, 255, 0.12);
+            --shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
+            --radius: 24px;
+            --radius-sm: 14px;
+            --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        html,
+        body {
+            height: 100%;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            overflow: hidden;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* ----- Scrollbar ----- */
+        ::-webkit-scrollbar {
+            width: 3px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--accent);
+            border-radius: 12px;
+        }
+
+        /* ----- App Shell ----- */
+        #app {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            height: 100dvh;
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 20px 16px 28px;
+            background: var(--bg-primary);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* subtle background glow */
+        #app::before {
+            content: '';
+            position: absolute;
+            top: -30%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 320px;
+            height: 320px;
+            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+            opacity: 0.25;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ----- Header ----- */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4px 0 14px;
+            z-index: 1;
+            flex-shrink: 0;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+
+        .brand-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--accent);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: #fff;
+            box-shadow: 0 4px 16px var(--accent-glow);
+        }
+
+        .brand h1 {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+            background: linear-gradient(135deg, #fff 60%, var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .brand span {
+            font-weight: 400;
+            font-size: 13px;
+            color: var(--text-secondary);
+            -webkit-text-fill-color: var(--text-secondary);
+            background: none;
+            margin-left: 2px;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-shrink: 0;
+            flex-wrap: wrap;
+        }
+
+        /* ----- Language Selector ----- */
+        .lang-selector {
+            position: relative;
+            display: inline-block;
+        }
+
+        .lang-selector select {
+            appearance: none;
+            -webkit-appearance: none;
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 40px;
+            padding: 5px 28px 5px 14px;
+            font-size: 12px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            outline: none;
+            transition: var(--transition);
+            min-width: 60px;
+            max-width: 110px;
+            height: 32px;
+            line-height: 1.2;
+            text-overflow: ellipsis;
+        }
+
+        .lang-selector select:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-dim);
+        }
+
+        .lang-selector select option {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        .lang-selector::after {
+            content: '\f107';
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+            font-size: 12px;
+            pointer-events: none;
+        }
+
+        .status-badge {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 4px 12px;
+            border-radius: 40px;
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+            transition: var(--transition);
+            height: 32px;
+        }
+
+        .status-badge .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-secondary);
+            transition: var(--transition);
+        }
+
+        .status-badge.active .dot {
+            background: #4cdf8b;
+            box-shadow: 0 0 12px rgba(76, 223, 139, 0.5);
+            animation: pulse-dot 1.4s ease-in-out infinite;
+        }
+
+        .status-badge.listening .dot {
+            background: #ffb347;
+            box-shadow: 0 0 16px rgba(255, 179, 71, 0.6);
+            animation: pulse-dot 0.8s ease-in-out infinite;
+        }
+
+        .status-badge.speaking .dot {
+            background: #6c8cff;
+            box-shadow: 0 0 16px var(--accent-glow);
+            animation: pulse-dot 0.9s ease-in-out infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%,
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.5);
+                opacity: 0.6;
+            }
+        }
+
+        /* Continuous Mode Toggle */
+        .toggle-continuous {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 17px;
+            padding: 4px;
+            border-radius: 40px;
+            cursor: pointer;
+            transition: var(--transition);
+            width: 34px;
+            height: 34px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid transparent;
+            touch-action: manipulation;
+        }
+
+        .toggle-continuous.active {
+            color: var(--accent);
+            border-color: var(--accent);
+            background: var(--accent-dim);
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        .toggle-continuous:active {
+            transform: scale(0.9);
+        }
+
+        /* ----- Conversation Area ----- */
+        .conversation {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 2px 12px;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .conversation.empty {
+            justify-content: center;
+            align-items: center;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 20px 16px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state .icon-big {
+            font-size: 56px;
+            color: var(--accent);
+            opacity: 0.35;
+            margin-bottom: 16px;
+            display: block;
+        }
+
+        .empty-state h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+
+        .empty-state p {
+            font-size: 14px;
+            opacity: 0.7;
+            line-height: 1.5;
+            max-width: 260px;
+            margin: 0 auto;
+        }
+
+        /* ----- Message Bubbles ----- */
+        .message {
+            display: flex;
+            gap: 12px;
+            max-width: 92%;
+            animation: fade-up 0.35s ease forwards;
+            opacity: 0;
+            transform: translateY(12px);
+        }
+
+        .message.user {
+            align-self: flex-end;
+            flex-direction: row-reverse;
+        }
+
+        .message.assistant {
+            align-self: flex-start;
+        }
+
+        @keyframes fade-up {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message .avatar {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+            color: #fff;
+            margin-top: 2px;
+        }
+
+        .message.user .avatar {
+            background: var(--accent);
+            box-shadow: 0 2px 12px var(--accent-glow);
+        }
+
+        .message.assistant .avatar {
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            color: var(--accent);
+        }
+
+        .message .bubble {
+            background: var(--bg-card);
+            padding: 14px 18px;
+            border-radius: var(--radius-sm);
+            line-height: 1.55;
+            font-size: 15px;
+            word-break: break-word;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            min-width: 48px;
+        }
+
+        .message.user .bubble {
+            background: var(--accent);
+            color: #fff;
+            border-color: var(--accent);
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.assistant .bubble {
+            border-bottom-left-radius: 4px;
+            color: var(--text-primary);
+        }
+
+        .message .bubble .time {
+            display: block;
+            font-size: 10px;
+            opacity: 0.4;
+            margin-top: 8px;
+            letter-spacing: 0.3px;
+            font-weight: 500;
+        }
+
+        .message.user .bubble .time {
+            opacity: 0.7;
+        }
+
+        /* typing indicator */
+        .typing-indicator {
+            display: flex;
+            gap: 5px;
+            padding: 12px 18px;
+            background: var(--bg-card);
+            border-radius: var(--radius-sm);
+            border-bottom-left-radius: 4px;
+            width: fit-content;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-secondary);
+            opacity: 0.3;
+            animation: typing-bounce 1.4s ease-in-out infinite;
+        }
+
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing-bounce {
+            0%,
+            60%,
+            100% {
+                transform: translateY(0);
+                opacity: 0.3;
+            }
+            30% {
+                transform: translateY(-8px);
+                opacity: 0.9;
+            }
+        }
+
+        /* ----- Input Area ----- */
+        .input-area {
+            z-index: 2;
+            flex-shrink: 0;
+            padding-top: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--bg-primary);
+            position: relative;
+        }
+
+        .input-area::before {
+            content: '';
+            position: absolute;
+            top: -8px;
+            left: -16px;
+            right: -16px;
+            height: 24px;
+            background: linear-gradient(to bottom, transparent, var(--bg-primary));
+            pointer-events: none;
+        }
+
+        .mic-btn {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            border: none;
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            font-size: 26px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+            touch-action: manipulation;
+        }
+
+        .mic-btn:active {
+            transform: scale(0.92);
+        }
+
+        .mic-btn.active {
+            background: var(--accent);
+            color: #fff;
+            box-shadow: 0 4px 32px var(--accent-glow);
+            border-color: var(--accent);
+        }
+
+        .mic-btn.listening {
+            background: #ffb347;
+            color: #fff;
+            box-shadow: 0 4px 32px rgba(255, 179, 71, 0.4);
+            border-color: #ffb347;
+            animation: mic-pulse 1s ease-in-out infinite;
+        }
+
+        @keyframes mic-pulse {
+            0%,
+            100% {
+                box-shadow: 0 4px 32px rgba(255, 179, 71, 0.3);
+            }
+            50% {
+                box-shadow: 0 4px 56px rgba(255, 179, 71, 0.6);
+            }
+        }
+
+        .mic-btn.speaking {
+            background: #6c8cff;
+            color: #fff;
+            box-shadow: 0 4px 32px var(--accent-glow);
+            border-color: #6c8cff;
+        }
+
+        .input-wrapper {
+            flex: 1;
+            background: var(--bg-card);
+            border-radius: 40px;
+            padding: 4px 4px 4px 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            transition: var(--transition);
+            min-width: 0;
+        }
+
+        .input-wrapper:focus-within {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-dim);
+        }
+
+        .input-wrapper input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: var(--text-primary);
+            font-size: 15px;
+            padding: 14px 0;
+            min-width: 0;
+            font-family: inherit;
+        }
+
+        .input-wrapper input::placeholder {
+            color: var(--text-secondary);
+            opacity: 0.6;
+        }
+
+        .input-wrapper .send-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: none;
+            background: var(--accent);
+            color: #fff;
+            font-size: 18px;
+            cursor: pointer;
+            transition: var(--transition);
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: manipulation;
+        }
+
+        .input-wrapper .send-btn:active {
+            transform: scale(0.88);
+        }
+
+        .input-wrapper .send-btn:disabled {
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
+        /* ----- Utilities ----- */
+        .hidden {
+            display: none !important;
+        }
+
+        /* ----- Toast / Snackbar ----- */
+        .toast {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: var(--bg-card);
+            color: var(--text-primary);
+            padding: 12px 24px;
+            border-radius: 40px;
+            font-size: 14px;
+            font-weight: 500;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+            opacity: 0;
+            transition: all 0.4s ease;
+            pointer-events: none;
+            z-index: 99;
+            max-width: 90%;
+            text-align: center;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        .toast.visible {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* ----- Responsive tweaks ----- */
+        @media (max-width: 480px) {
+            .header {
+                gap: 4px;
+            }
+            .brand h1 {
+                font-size: 17px;
+            }
+            .brand span {
+                font-size: 11px;
+            }
+            .lang-selector select {
+                font-size: 11px;
+                padding: 4px 24px 4px 10px;
+                max-width: 80px;
+                height: 28px;
+            }
+            .status-badge {
+                font-size: 10px;
+                padding: 3px 10px;
+                height: 28px;
+            }
+            .status-badge .dot {
+                width: 6px;
+                height: 6px;
+            }
+            .toggle-continuous {
+                font-size: 15px;
+                width: 30px;
+                height: 30px;
+            }
+        }
+
+        @media (max-width: 400px) {
+            #app {
+                padding: 14px 12px 20px;
+            }
+            .brand h1 {
+                font-size: 15px;
+            }
+            .brand-icon {
+                width: 34px;
+                height: 34px;
+                font-size: 16px;
+            }
+            .mic-btn {
+                width: 56px;
+                height: 56px;
+                font-size: 22px;
+            }
+            .message .bubble {
+                font-size: 14px;
+                padding: 12px 14px;
+            }
+            .input-wrapper input {
+                font-size: 14px;
+                padding: 12px 0;
+            }
+            .input-wrapper .send-btn {
+                width: 38px;
+                height: 38px;
+                font-size: 15px;
+            }
+            .lang-selector select {
+                font-size: 10px;
+                padding: 3px 20px 3px 8px;
+                max-width: 65px;
+                height: 26px;
+            }
+            .status-badge {
+                font-size: 9px;
+                padding: 2px 8px;
+                height: 26px;
+            }
+            .toggle-continuous {
+                font-size: 13px;
+                width: 26px;
+                height: 26px;
+            }
+        }
+
+        @media (max-width: 360px) {
+            .brand h1 {
+                font-size: 13px;
+            }
+            .brand span {
+                font-size: 9px;
+            }
+            .brand-icon {
+                width: 28px;
+                height: 28px;
+                font-size: 13px;
+            }
+            .empty-state .icon-big {
+                font-size: 42px;
+            }
+            .lang-selector select 
